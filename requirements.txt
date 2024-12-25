@@ -19,8 +19,10 @@ conda-libmamba-solver @ file:///croot/conda-libmamba-solver_1727775630457/work/s
 conda-package-handling @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_ef9phnqphe/croot/conda-package-handling_1718138279942/work
 conda_package_streaming @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_6dgq200203/croot/conda-package-streaming_1718136087190/work
 cryptography @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_51oymkxnaj/croot/cryptography_1724940565328/work
+dataclasses-json==0.6.7
 decorator==5.1.1
 distro @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_ddkyz0575y/croot/distro_1714488254309/work
+faiss-cpu==1.9.0.post1
 ffmpeg==1.4
 ffmpeg-python==0.2.0
 Flask==3.1.0
@@ -30,6 +32,7 @@ future==1.0.0
 h11==0.14.0
 httpcore==1.0.7
 httpx==0.28.1
+httpx-sse==0.4.0
 idna @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_a12xpo84t2/croot/idna_1714398852854/work
 imageio==2.36.1
 imageio-ffmpeg==0.5.1
@@ -39,15 +42,18 @@ jiter==0.8.2
 jsonpatch @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_3ajyoz8zoj/croot/jsonpatch_1714483362270/work
 jsonpointer==2.1
 langchain==0.3.13
+langchain-community==0.3.13
 langchain-core==0.3.28
 langchain-openai==0.2.14
 langchain-text-splitters==0.3.4
 langsmith==0.2.4
 libmambapy @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_14wu5sk1ap/croot/mamba-split_1725563369022/work/libmambapy
 MarkupSafe==3.0.2
+marshmallow==3.23.2
 menuinst @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_ad321a45td/croot/menuinst_1723567614652/work
 moviepy==2.1.1
 multidict==6.1.0
+mypy-extensions==1.0.0
 numpy==2.2.1
 openai==1.58.1
 opencv-python==4.10.0.84
@@ -61,6 +67,7 @@ propcache==0.2.1
 pycosat @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_19qelmdbl6/croot/pycosat_1714510743067/work
 pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
 pydantic==2.10.4
+pydantic-settings==2.7.0
 pydantic_core==2.27.2
 PySocks @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/pysocks_1699237568675/work
 pyTelegramBotAPI==4.25.0
@@ -80,6 +87,7 @@ tenacity==9.0.0
 tiktoken==0.8.0
 tqdm @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_24zjwympsr/croot/tqdm_1724853942429/work
 truststore @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/truststore_1701805928787/work
+typing-inspect==0.9.0
 typing_extensions==4.12.2
 urllib3 @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_06_m8gdsy6/croot/urllib3_1727769822458/work
 Werkzeug==3.1.3
