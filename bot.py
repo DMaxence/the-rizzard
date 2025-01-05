@@ -12,6 +12,8 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 from langchain_openai import ChatOpenAI
+from langchain_xai import ChatXAI
+
 from langchain_core.messages import HumanMessage
 from langchain_core.chat_history import (
     InMemoryChatMessageHistory,
@@ -51,6 +53,7 @@ stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY")
 stripe.api_key = stripe_secret_key
 
 model = ChatOpenAI(model="gpt-4o-mini")
+# model = ChatXAI(xai_api_key=os.environ.get("XAI_API_KEY"), model="grok-beta")
 
 client = AsyncOpenAI(api_key=openai_api_key)
 
@@ -609,7 +612,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
 
     # Check if the user is typing by looking at the message timestamp
     current_time = update.message.date.timestamp()
-    last_message_time = context.user_data.get('last_message_time', 0)
+    last_message_time = context.user_data.get("last_message_time", 0)
     time_diff = current_time - last_message_time
 
     # If messages are less than 2 seconds apart, consider the user still typing
@@ -625,7 +628,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         )
 
     # Update last message time
-    context.user_data['last_message_time'] = current_time
+    context.user_data["last_message_time"] = current_time
 
 
 async def process_message_with_delay(
