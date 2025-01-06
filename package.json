@@ -1,11 +1,11 @@
 {
   "name": "rizzard-bot",
   "version": "1.0.0",
-  "main": "dist/bot.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/bot.js",
-    "dev": "nodemon src/bot.ts",
+    "start": "node dist/index.js",
+    "dev": "nodemon src/index.ts",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
     "test": "jest"
