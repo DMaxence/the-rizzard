@@ -744,7 +744,7 @@ bot.on("photo", async (ctx, next) => {
 });
 
 async function handleMessage(ctx: Context): Promise<void> {
-  console.log("Handling message...", ctx);
+  console.log("Handling message...");
   const userId = ctx.from?.id;
   if (!userId) return;
 
