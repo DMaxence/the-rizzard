@@ -18,6 +18,7 @@ import { InlineKeyboardMarkup } from "telegraf/types";
 import { DEFAULT_CONFIG, PROMPT } from "./config";
 import { MESSAGES } from "./constants";
 import { UserConfig } from "./types";
+import express from "express";
 
 // Load environment variables
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -937,10 +938,25 @@ async function setConfigurationStep(
   }
 }
 
-async function main() {
-  try {
-    console.log("Starting application initialization...");
+const port = process.env.PORT || 3000;
+const app = express();
 
+// Setup Express middleware
+app.use(express.json());
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+// Webhook endpoint
+app.post("/webhook", (req, res) => {
+  bot.handleUpdate(req.body, res);
+});
+
+// Initialize bot and start server
+async function startServer() {
+  try {
     // Validate environment variables
     if (
       !openaiApiKey ||
@@ -950,32 +966,36 @@ async function main() {
     ) {
       throw new Error("Missing required environment variables");
     }
-    console.log("Environment variables validated");
 
-    // Start the bot
-    console.log("Launching bot...");
-    await bot.launch();
-    console.log("Bot successfully launched");
+    // Setup webhook URL
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) {
+      throw new Error("Missing WEBHOOK_URL environment variable");
+    }
+
+    // Configure webhook
+    await bot.telegram.setWebhook(`${webhookUrl}/webhook`);
+    console.log("Webhook set successfully");
+
+    // Start Express server
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
 
     // Setup graceful shutdown
     const shutdown = async () => {
       console.log("Shutting down...");
-      await bot.stop();
+      await bot.telegram.deleteWebhook();
       process.exit(0);
     };
 
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   } catch (error) {
-    console.error("Error initializing application:", error);
+    console.error("Error starting server:", error);
     process.exit(1);
   }
 }
 
-// Start the application
-if (require.main === module) {
-  main().catch((error) => {
-    console.error("Fatal error:", error);
-    process.exit(1);
-  });
-}
+// Start the server
+startServer();
