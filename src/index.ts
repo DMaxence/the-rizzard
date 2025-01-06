@@ -315,60 +315,6 @@ async function clearUserAwaitingInput(userId: number): Promise<void> {
   await redis.del(`user:${userId}:awaiting_input`);
 }
 
-// Update the text handler to use Redis
-bot.on("text", async (ctx, next) => {
-  const userId = ctx.from.id;
-  const messageText = ctx.message.text;
-
-  console.log("Text received from user:", userId, "message:", messageText);
-
-  // Check configuration flow first
-  const configStep = await getConfigurationStep(userId);
-
-  const awaitingInput = await getUserAwaitingInput(userId);
-
-  if (configStep === "name") {
-    console.log("Processing name input for user:", userId);
-    // Handle name input during initial configuration
-    await configureUser(userId, { name: messageText });
-    await setConfigurationStep(userId, "gender");
-
-    const genderKeyboard: InlineKeyboardMarkup = {
-      inline_keyboard: [
-        [
-          {
-            text: await getMessage(userId, "male"),
-            callback_data: "set_gender_male",
-          },
-          {
-            text: await getMessage(userId, "female"),
-            callback_data: "set_gender_female",
-          },
-        ],
-      ],
-    };
-
-    await ctx.reply(await getMessage(userId, "askGender"), {
-      reply_markup: genderKeyboard,
-    });
-    return;
-  } else if (awaitingInput === "name") {
-    // Handle name input during settings change
-    await configureUser(userId, { name: messageText });
-    await ctx.reply(
-      await getMessage(userId, "configType", {
-        config_type: await getMessage(userId, "name"),
-        value: messageText,
-      })
-    );
-    await clearUserAwaitingInput(userId);
-    return;
-  }
-
-  // If not handling configuration, process as regular message
-  await handleMessage(ctx);
-});
-
 // Modify the language callback handler to handle both initial setup and settings changes
 bot.action(/^set_language_(.+)$/, async (ctx) => {
   if (!ctx.callbackQuery || !("data" in ctx.callbackQuery) || !ctx.from) return;
@@ -549,46 +495,6 @@ bot.action(/^set_preference_(.+)$/, async (ctx) => {
   }
 });
 
-// Modify text handler to handle configuration flow
-bot.on("text", async (ctx, next) => {
-  const userId = ctx.from.id;
-  const configStep = await getConfigurationStep(userId);
-  const messageText = ctx.message.text;
-
-  if (configStep) {
-    switch (configStep) {
-      case "name":
-        await configureUser(userId, { name: messageText });
-        await setConfigurationStep(userId, "gender");
-
-        const genderKeyboard: InlineKeyboardMarkup = {
-          inline_keyboard: [
-            [
-              {
-                text: await getMessage(userId, "male"),
-                callback_data: "set_gender_male",
-              },
-              {
-                text: await getMessage(userId, "female"),
-                callback_data: "set_gender_female",
-              },
-            ],
-          ],
-        };
-
-        await ctx.reply(await getMessage(userId, "askGender"), {
-          reply_markup: genderKeyboard,
-        });
-        break;
-
-      default:
-        return next();
-    }
-  } else {
-    return next();
-  }
-});
-
 // Add helper function for image processing
 const extractTextFromImage = async (image: Buffer): Promise<string> => {
   console.log("extractTextFromImage");
@@ -748,25 +654,56 @@ async function handleMessage(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  console.log("userId", userId);
-
   const messageText =
     ctx.message && "text" in ctx.message ? ctx.message.text : undefined;
   if (!messageText) return;
 
-  console.log("messageText");
+  console.log("Text received from user:", userId, "message:", messageText);
 
-  // Check if this is a configuration input using Redis instead of store
-  const awaitingInput = await getUserAwaitingInput(userId);
-  if (awaitingInput) {
-    // Process configuration inputs immediately
-    await processMessageWithDelay(ctx, messageText);
+  // Check configuration flow first
+  const configStep = await getConfigurationStep(userId);
+  if (configStep === "name") {
+    console.log("Processing name input for user:", userId);
+    await configureUser(userId, { name: messageText });
+    await setConfigurationStep(userId, "gender");
+
+    const genderKeyboard: InlineKeyboardMarkup = {
+      inline_keyboard: [
+        [
+          {
+            text: await getMessage(userId, "male"),
+            callback_data: "set_gender_male",
+          },
+          {
+            text: await getMessage(userId, "female"),
+            callback_data: "set_gender_female",
+          },
+        ],
+      ],
+    };
+
+    await ctx.reply(await getMessage(userId, "askGender"), {
+      reply_markup: genderKeyboard,
+    });
     return;
   }
 
-  // For regular messages, use debounce
+  // Check awaiting input
+  const awaitingInput = await getUserAwaitingInput(userId);
+  if (awaitingInput === "name") {
+    await configureUser(userId, { name: messageText });
+    await ctx.reply(
+      await getMessage(userId, "configType", {
+        config_type: await getMessage(userId, "name"),
+        value: messageText,
+      })
+    );
+    await clearUserAwaitingInput(userId);
+    return;
+  }
+
+  // Handle regular messages with debounce
   const existingTask = typingTasks[userId];
-  console.log("existingTask", existingTask);
   if (existingTask) {
     clearTimeout(existingTask);
   }
@@ -776,6 +713,9 @@ async function handleMessage(ctx: Context): Promise<void> {
     DEBOUNCE_DELAY
   );
 }
+
+// Use single handler
+bot.on("text", handleMessage);
 
 async function processMessageWithDelay(
   ctx: Context,
@@ -839,9 +779,6 @@ async function enhanceResponseStyle(
     styleResponse.choices[0].message.content || suggestion;
   return `${context}you should say${styledSuggestion}`;
 }
-
-// Add the handler
-bot.on("text", handleMessage);
 
 async function describeImage(image: Buffer): Promise<string> {
   console.log("Describing image...");
