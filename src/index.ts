@@ -13,6 +13,7 @@ import { OpenAI } from "openai";
 import Stripe from "stripe";
 import { Context, Telegraf } from "telegraf";
 import { InlineKeyboardMarkup } from "telegraf/types";
+import { LogSnag } from "@logsnag/node";
 // import { FaissStore } from "@langchain/community/vectorstores/faiss";
 
 import { DEFAULT_CONFIG, PROMPT } from "./config";
@@ -25,8 +26,15 @@ const openaiApiKey = process.env.OPENAI_API_KEY;
 const telegramApiKey = process.env.TELEGRAM_BOT_TOKEN;
 const stripePublicKey = process.env.STRIPE_PUBLIC_KEY;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const logsnagToken = process.env.LOGSNAG_TOKEN;
 
-if (!openaiApiKey || !telegramApiKey || !stripePublicKey || !stripeSecretKey) {
+if (
+  !openaiApiKey ||
+  !telegramApiKey ||
+  !stripePublicKey ||
+  !stripeSecretKey ||
+  !logsnagToken
+) {
   throw new Error("Missing required environment variables");
 }
 
@@ -134,6 +142,12 @@ async function getMessage(
 
 const bot = new Telegraf(telegramApiKey);
 
+// Initialize LogSnag
+const logsnag = new LogSnag({
+  token: logsnagToken,
+  project: "the-rizzard",
+});
+
 // Add start command handler
 bot.command("start", async (ctx) => {
   const userId = ctx.from.id;
@@ -147,8 +161,29 @@ bot.command("start", async (ctx) => {
         name: ctx.from.first_name,
       })
     );
+    await logsnag.identify({
+      user_id: userId.toString(),
+      properties: {
+        username: ctx.from.username || "someone",
+        platform: "telegram",
+      },
+    });
     return;
   }
+
+  // Track new user with LogSnag
+  await logsnag.track({
+    channel: "users",
+    event: "New User",
+    description: `${ctx.from.first_name} (${
+      ctx.from.username || "someone"
+    }) started using The Rizzard`,
+    icon: "👤",
+    tags: {
+      username: ctx.from.username || "someone",
+      platform: "telegram",
+    },
+  });
 
   // Set initial configuration step
   await setConfigurationStep(userId, "language");
