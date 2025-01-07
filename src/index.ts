@@ -182,6 +182,7 @@ bot.command("start", async (ctx) => {
     tags: {
       username: ctx.from.username || "someone",
       platform: "telegram",
+      language: ctx.from.language_code || "unknown",
     },
   });
 
