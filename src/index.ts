@@ -924,9 +924,9 @@ app.get("/health", (req, res) => {
 });
 
 // Webhook endpoint
-app.post("/webhook", (req, res) => {
-  bot.handleUpdate(req.body, res);
-});
+// app.post("/webhook", (req, res) => {
+//   bot.handleUpdate(req.body, res);
+// });
 
 // Validate environment variables
 if (!openaiApiKey || !telegramApiKey || !stripePublicKey || !stripeSecretKey) {
@@ -940,8 +940,8 @@ if (!webhookUrl) {
 }
 
 // Configure webhook
-bot.telegram.setWebhook(`${webhookUrl}/webhook`);
-app.use(bot.webhookCallback("/webhook")); // Use webhookCallback instead of createWebhook
+// bot.telegram.setWebhook(`${webhookUrl}/webhook`);
+app.use(await bot.createWebhook({domain: webhookUrl}));
 console.log("Webhook set successfully");
 
 // Start Express server
@@ -972,11 +972,13 @@ const shutdown = async () => {
 process.on("SIGINT", () => {
   console.log("Received SIGINT signal");
   shutdown();
+  bot.stop('SIGINT');
 });
 
 process.on("SIGTERM", () => {
   console.log("Received SIGTERM signal");
   shutdown();
+  bot.stop('SIGTERM');
 });
 
 // Keep the process alive
