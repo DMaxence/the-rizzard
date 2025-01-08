@@ -941,7 +941,15 @@ if (!webhookUrl) {
 
 // Configure webhook
 // bot.telegram.setWebhook(`${webhookUrl}/webhook`);
-app.use(await bot.createWebhook({domain: webhookUrl}));
+bot.launch({
+  webhook: {
+    // Public domain for webhook; e.g.: example.com
+    domain: webhookUrl,
+
+    // Port to listen on; e.g.: 8080
+    port: Number(port),
+  },
+});
 console.log("Webhook set successfully");
 
 // Start Express server
@@ -972,13 +980,13 @@ const shutdown = async () => {
 process.on("SIGINT", () => {
   console.log("Received SIGINT signal");
   shutdown();
-  bot.stop('SIGINT');
+  bot.stop("SIGINT");
 });
 
 process.on("SIGTERM", () => {
   console.log("Received SIGTERM signal");
   shutdown();
-  bot.stop('SIGTERM');
+  bot.stop("SIGTERM");
 });
 
 // Keep the process alive
