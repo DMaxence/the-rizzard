@@ -956,15 +956,50 @@ async function startServer() {
       console.log(`Server is running on port ${port}`);
     });
 
-    // Setup graceful shutdown
+    // Update the shutdown handler
     const shutdown = async () => {
-      console.log("Shutting down...");
-      await bot.telegram.deleteWebhook();
-      process.exit(0);
+      console.log("Received shutdown signal");
+      try {
+        console.log("Attempting to delete webhook...");
+        await bot.telegram.deleteWebhook();
+        console.log("Webhook deleted successfully");
+        
+        // Add a small delay before exiting to ensure logs are written
+        setTimeout(() => {
+          console.log("Exiting process...");
+          process.exit(0);
+        }, 1000);
+      } catch (error) {
+        console.error("Error during shutdown:", error);
+        process.exit(1);
+      }
     };
 
-    process.once("SIGINT", shutdown);
-    process.once("SIGTERM", shutdown);
+    // Update signal handlers to be more specific
+    process.on("SIGINT", () => {
+      console.log("Received SIGINT signal");
+      shutdown();
+    });
+
+    process.on("SIGTERM", () => {
+      console.log("Received SIGTERM signal");
+      shutdown();
+    });
+
+    // Keep the process alive
+    process.on("exit", (code) => {
+      console.log(`Process exiting with code: ${code}`);
+    });
+
+    // Add unhandled rejection handler
+    process.on("unhandledRejection", (reason, promise) => {
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+    });
+
+    // Add uncaught exception handler
+    process.on("uncaughtException", (error) => {
+      console.error("Uncaught Exception:", error);
+    });
   } catch (error) {
     console.error("Error starting server:", error);
     process.exit(1);
