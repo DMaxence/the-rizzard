@@ -185,6 +185,7 @@ bot.command("start", async (ctx) => {
       language: ctx.from.language_code || "unknown",
     },
   });
+  console.log("LogSnag track event sent for user:", userId);
 
   // Set initial configuration step
   await setConfigurationStep(userId, "language");
