@@ -928,83 +928,68 @@ app.post("/webhook", (req, res) => {
   bot.handleUpdate(req.body, res);
 });
 
-// Initialize bot and start server
-async function startServer() {
-  try {
-    // Validate environment variables
-    if (
-      !openaiApiKey ||
-      !telegramApiKey ||
-      !stripePublicKey ||
-      !stripeSecretKey
-    ) {
-      throw new Error("Missing required environment variables");
-    }
-
-    // Setup webhook URL
-    const webhookUrl = process.env.WEBHOOK_URL;
-    if (!webhookUrl) {
-      throw new Error("Missing WEBHOOK_URL environment variable");
-    }
-
-    // Configure webhook
-    await bot.telegram.setWebhook(`${webhookUrl}/webhook`);
-    console.log("Webhook set successfully");
-
-    // Start Express server
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
-
-    // Update the shutdown handler
-    const shutdown = async () => {
-      console.log("Received shutdown signal");
-      try {
-        console.log("Attempting to delete webhook...");
-        await bot.telegram.deleteWebhook();
-        console.log("Webhook deleted successfully");
-        
-        // Add a small delay before exiting to ensure logs are written
-        setTimeout(() => {
-          console.log("Exiting process...");
-          process.exit(0);
-        }, 1000);
-      } catch (error) {
-        console.error("Error during shutdown:", error);
-        process.exit(1);
-      }
-    };
-
-    // Update signal handlers to be more specific
-    process.on("SIGINT", () => {
-      console.log("Received SIGINT signal");
-      shutdown();
-    });
-
-    process.on("SIGTERM", () => {
-      console.log("Received SIGTERM signal");
-      shutdown();
-    });
-
-    // Keep the process alive
-    process.on("exit", (code) => {
-      console.log(`Process exiting with code: ${code}`);
-    });
-
-    // Add unhandled rejection handler
-    process.on("unhandledRejection", (reason, promise) => {
-      console.error("Unhandled Rejection at:", promise, "reason:", reason);
-    });
-
-    // Add uncaught exception handler
-    process.on("uncaughtException", (error) => {
-      console.error("Uncaught Exception:", error);
-    });
-  } catch (error) {
-    console.error("Error starting server:", error);
-    process.exit(1);
-  }
+// Validate environment variables
+if (!openaiApiKey || !telegramApiKey || !stripePublicKey || !stripeSecretKey) {
+  throw new Error("Missing required environment variables");
 }
 
-// Start the server
-startServer();
+// Setup webhook URL
+const webhookUrl = process.env.WEBHOOK_URL;
+if (!webhookUrl) {
+  throw new Error("Missing WEBHOOK_URL environment variable");
+}
+
+// Configure webhook
+bot.telegram.setWebhook(`${webhookUrl}/webhook`);
+app.use(bot.webhookCallback("/webhook")); // Use webhookCallback instead of createWebhook
+console.log("Webhook set successfully");
+
+// Start Express server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
+// Update the shutdown handler
+const shutdown = async () => {
+  console.log("Received shutdown signal");
+  try {
+    console.log("Attempting to delete webhook...");
+    await bot.telegram.deleteWebhook();
+    console.log("Webhook deleted successfully");
+
+    // Add a small delay before exiting to ensure logs are written
+    setTimeout(() => {
+      console.log("Exiting process...");
+      process.exit(0);
+    }, 1000);
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+    process.exit(1);
+  }
+};
+
+// Update signal handlers to be more specific
+process.on("SIGINT", () => {
+  console.log("Received SIGINT signal");
+  shutdown();
+});
+
+process.on("SIGTERM", () => {
+  console.log("Received SIGTERM signal");
+  shutdown();
+});
+
+// Keep the process alive
+process.on("exit", (code) => {
+  console.log(`Process exiting with code: ${code}`);
+});
+
+// Add unhandled rejection handler
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+// Add uncaught exception handler
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+});
