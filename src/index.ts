@@ -913,6 +913,7 @@ async function setConfigurationStep(
 }
 
 const port = process.env.PORT || 3000;
+const telegramPort = process.env.TELEGRAM_PORT || 3001;
 const app = express();
 
 // Setup Express middleware
@@ -947,15 +948,15 @@ bot.launch({
     domain: webhookUrl,
 
     // Port to listen on; e.g.: 8080
-    port: Number(port),
+    port: Number(telegramPort),
   },
 });
 console.log("Webhook set successfully");
 
 // Start Express server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Server is running on port ${port}`);
+// });
 
 // Update the shutdown handler
 const shutdown = async () => {
