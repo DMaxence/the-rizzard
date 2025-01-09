@@ -954,9 +954,9 @@ bot.launch({
 console.log("Webhook set successfully");
 
 // Start Express server
-// app.listen(port, () => {
-//   console.log(`Server is running on port ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 // Update the shutdown handler
 const shutdown = async () => {
