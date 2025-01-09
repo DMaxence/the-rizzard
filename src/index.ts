@@ -945,58 +945,21 @@ if (!webhookUrl) {
 }
 
 // Configure webhook
-// bot.telegram.setWebhook(`${webhookUrl}/webhook`);
-bot.launch({
-  webhook: {
-    // Public domain for webhook; e.g.: example.com
-    domain: webhookUrl,
+bot.telegram.setWebhook(`${webhookUrl}/webhook`);
+// bot.launch({
+//   webhook: {
+//     // Public domain for webhook; e.g.: example.com
+//     domain: webhookUrl,
 
-    // Port to listen on; e.g.: 8080
-    port: Number(telegramPort),
-  },
-});
+//     // Port to listen on; e.g.: 8080
+//     port: Number(telegramPort),
+//   },
+// });
 console.log("Webhook set successfully");
 
 // Start Express server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-});
-
-// Update the shutdown handler
-const shutdown = async () => {
-  console.log("Received shutdown signal");
-  try {
-    console.log("Attempting to delete webhook...");
-    await bot.telegram.deleteWebhook();
-    console.log("Webhook deleted successfully");
-
-    // Add a small delay before exiting to ensure logs are written
-    setTimeout(() => {
-      console.log("Exiting process...");
-      process.exit(0);
-    }, 1000);
-  } catch (error) {
-    console.error("Error during shutdown:", error);
-    process.exit(1);
-  }
-};
-
-// Update signal handlers to be more specific
-process.on("SIGINT", () => {
-  console.log("Received SIGINT signal");
-  shutdown();
-  bot.stop("SIGINT");
-});
-
-process.on("SIGTERM", () => {
-  console.log("Received SIGTERM signal");
-  shutdown();
-  bot.stop("SIGTERM");
-});
-
-// Keep the process alive
-process.on("exit", (code) => {
-  console.log(`Process exiting with code: ${code}`);
 });
 
 // Add unhandled rejection handler
