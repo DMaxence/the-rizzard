@@ -925,9 +925,13 @@ app.get("/health", (req, res) => {
 });
 
 // Webhook endpoint
-// app.post("/webhook", (req, res) => {
-//   bot.handleUpdate(req.body, res);
-// });
+app.post("/webhook", (req, res) => {
+  bot.handleUpdate(req.body, res);
+});
+
+app.get("/test", (req, res) => {
+  res.send(`Hello ${req.query.name}`);
+});
 
 // Validate environment variables
 if (!openaiApiKey || !telegramApiKey || !stripePublicKey || !stripeSecretKey) {
