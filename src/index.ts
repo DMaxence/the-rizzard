@@ -20,6 +20,7 @@ import { DEFAULT_CONFIG, PROMPT } from "./config";
 import { MESSAGES } from "./constants";
 import { UserConfig } from "./types";
 import express from "express";
+import { createClient } from "@supabase/supabase-js";
 
 // Load environment variables
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -27,13 +28,17 @@ const telegramApiKey = process.env.TELEGRAM_BOT_TOKEN;
 const stripePublicKey = process.env.STRIPE_PUBLIC_KEY;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const logsnagToken = process.env.LOGSNAG_TOKEN;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
 
 if (
   !openaiApiKey ||
   !telegramApiKey ||
   !stripePublicKey ||
   !stripeSecretKey ||
-  !logsnagToken
+  !logsnagToken ||
+  !supabaseKey ||
+  !supabaseUrl
 ) {
   throw new Error("Missing required environment variables");
 }
@@ -50,6 +55,9 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
+
+// Initialize Supabase client
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Initialize vector store for conversation history
 const embeddings = new OpenAIEmbeddings();
@@ -103,6 +111,7 @@ async function setUserConfig(
     ...config,
   };
   await redis.set(`user:${userId}:config`, JSON.stringify(newConfig));
+  await supabase.from("users").update(newConfig).eq("app_id", userId);
 }
 
 async function getUserLanguage(userId: number): Promise<string> {
@@ -184,7 +193,26 @@ bot.command("start", async (ctx) => {
       platform: "telegram",
       language: ctx.from.language_code || "unknown",
     },
+    notify: true,
   });
+
+  // Add user to Supabase
+  const { error } = await supabase.from("users").insert([
+    {
+      app_id: userId,
+      username: ctx.from.username || null,
+      name: ctx.from.first_name,
+      language: ctx.from.language_code || "en",
+      gender: null,
+      sexual_preference: null,
+      platform: "telegram",
+    },
+  ]);
+
+  if (error) {
+    console.error("Error adding user to Supabase:", error);
+  }
+
   console.log("LogSnag track event sent for user:", userId);
 
   // Set initial configuration step
