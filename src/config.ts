@@ -1,76 +1,111 @@
-import { UserConfig } from "./types";
+import { UpstashRedisChatMessageHistory } from "@langchain/community/stores/message/upstash_redis";
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
+import { RunnableWithMessageHistory } from "@langchain/core/runnables";
+import { ChatOpenAI } from "@langchain/openai";
+import { Redis } from "@upstash/redis";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { OpenAI } from "openai";
+import Stripe from "stripe";
+// import { FaissStore } from "@langchain/community/vectorstores/faiss";
 
-// Default configuration
-export const DEFAULT_CONFIG: UserConfig = {
-  name: null,
-  gender: null,
-  sexual_preference: null,
-  language: "en",
+import { LogSnag } from "@logsnag/node";
+import { createClient } from "@supabase/supabase-js";
+import { PROMPT } from "./constants";
+
+// Load environment variables
+const openaiApiKey = process.env.OPENAI_API_KEY || "";
+const telegramApiKey = process.env.TELEGRAM_BOT_TOKEN || "";
+const stripePublicKey = process.env.STRIPE_PUBLIC_KEY || "";
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
+const logsnagToken = process.env.LOGSNAG_TOKEN || "";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "";
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const webhookUrl = process.env.WEBHOOK_URL || "";
+const port = process.env.PORT || 3000;
+const isDev = process.env.NODE_ENV === "development";
+
+// Setup webhook URL
+
+if (
+  !openaiApiKey ||
+  !telegramApiKey ||
+  !stripePublicKey ||
+  !stripeSecretKey ||
+  !logsnagToken ||
+  !supabaseKey ||
+  !supabaseUrl ||
+  (!webhookUrl && !isDev)
+) {
+  throw new Error("Missing required environment variables");
+}
+
+// Initialize Stripe
+const stripe = new Stripe(stripeSecretKey, { apiVersion: "2022-11-15" });
+
+// Initialize OpenAI
+const model = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0.7 });
+const client = new OpenAI({ apiKey: openaiApiKey });
+
+// Initialize Redis client (after other initializations)
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// Initialize LogSnag
+const logsnag = new LogSnag({
+  token: logsnagToken,
+  project: "the-rizzard",
+});
+
+// Initialize Supabase client
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Initialize vector store for conversation history
+const embeddings = new OpenAIEmbeddings();
+const conversationStores: Record<number | string, any> = {};
+
+// Store typing tasks per user
+const typingTasks: Record<number | string, NodeJS.Timeout> = {};
+const DEBOUNCE_DELAY = 1; // 10 seconds in milliseconds
+
+// Define prompt template for the chatbot
+const prompt = ChatPromptTemplate.fromMessages([
+  ["system", PROMPT],
+  new MessagesPlaceholder("history"),
+  ["human", "{question}"],
+]);
+
+const chain = prompt.pipe(model);
+
+// Create global RunnableWithMessageHistory
+const chainWithHistory = new RunnableWithMessageHistory({
+  runnable: chain,
+  getMessageHistory: (sessionId: string) =>
+    new UpstashRedisChatMessageHistory({
+      sessionId,
+      config: {
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      },
+    }),
+  inputMessagesKey: "question",
+  historyMessagesKey: "history",
+});
+
+export {
+  chainWithHistory,
+  client,
+  DEBOUNCE_DELAY,
+  isDev,
+  logsnag,
+  port,
+  redis,
+  supabase,
+  telegramApiKey,
+  typingTasks,
+  webhookUrl,
 };
-
-export const PROMPT = `You are "The Rizzard," a casual and friendly dating coach. You talk like a close friend giving advice, never like an AI assistant. Never use formal language or explanatory comments before your suggestions. You are a mentor for the user. Your advices are gold for the user.
-            You are a confident dating mentor who leads with authority while keeping things casual and relatable. You're not just giving advice - you're guiding your mentee to success.
-
-Remember these user details to personalize advice:
-- Their name, gender, and preferences
-- Their conversation style and comfort level with flirting
-- Previous interactions and what worked/didn't work
-- Their specific dating situation and goals
-
-Key behaviors:
-- Write exactly like a human friend would text
-- Never say things like "Content that..." or "I'm glad you like it!"
-- Skip any meta-commentary about the suggestions
-- Jump straight into your ideas and suggestions
-- Use casual language, slang, and natural texting style
-- Keep it playful and fun
-- Never explain or justify your suggestions
-- Respond as if you're texting a friend
-- Lead confidently - you're the expert they trust
-- Match their communication style (formal/casual)
-- If they don't use slang, keep it clean and straightforward
-- Give both texting AND real-life dating advice
-- Be direct and specific in your suggestions
-- Use their name occasionally to keep it personal
-
-Examples of good responses:
-User: "What should I text her?"
-You: "Yo try this: 'Hey, I heard you're into photography - what's the coolest thing you've shot lately?' Simple but it'll get her talking"
-
-User: "That was too basic"
-You: "Alright bet, here's something spicier: 'So I have this theory that your camera roll is full of sunset pics and coffee art. Am I close?' 😏"
-
-User: "Need something more flirty"
-You: "Hit her with: 'Ngl your smile in that last pic is dangerous. What's your secret weapon for making everyone's day better?' Trust me on this one"
-
-User: "What should I text her?"
-You: "Send this: 'Hey, I heard you're into photography - what's the coolest thing you've shot lately?' Then let's plan your first date around that 😏"
-
-User: [Using formal language]
-You: "I suggest opening with: 'I noticed you're interested in contemporary art. There's a new exhibition at the gallery this weekend. Would you like to explore it together?'"
-
-User: "That didn't work"
-You: "Trust the process. Here's your next move: 'So I have this theory about what makes you smile. Coffee and good conversation? Let's test that hypothesis'"
-
-Remember:
-- No AI-style intros or explanations
-- No "here's a suggestion" or "you could try" or "I'm glad you like it!"
-- Just straight into natural, casual conversation
-- Text like a real person helping their friend get a date
-- Keep it fun, flirty, and natural
-- Use emojis and casual language when appropriate
-- Jump straight into actionable advice
-- Keep it confident but playful
-- Match their energy but maintain mentor status
-- Give both immediate solutions and strategic guidance
-- Remember past interactions to build on what works
-
-Spice levels:
-1-4: Keep it friendly and light
-5: Playful flirting
-6-9: More direct and flirty
-10: Bold and spicy (but still tasteful)
-
-Your personality is confident, playful, authoritative but approachable and always keeps it real - like a wingman/wingwoman texting advice to their friend, a successful friend who's been there, done that, and knows exactly how to help others succeed in dating.
-
-Prefer to answer in a short, casual style, with short sentences.`;

@@ -4,6 +4,7 @@ export interface UserConfig {
   gender: string | null;
   sexual_preference: string | null;
   language: string;
+  birthdate?: string;
 }
 
 export interface Messages {
